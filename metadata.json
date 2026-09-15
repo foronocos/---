@@ -1,0 +1,7 @@
+{
+  "name": "CosmoChronicle",
+  "description": "Интерактивная космическая обсерватория: симулятор планетных орбит, карта созвездий, гравитационная лаборатория и генератор космического эмбиента.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
