@@ -1,7 +1,6 @@
 {
-  "name": "CosmoChronicle",
-  "description": "Интерактивная космическая обсерватория: симулятор планетных орбит, карта созвездий, гравитационная лаборатория и генератор космического эмбиента.",
+  "name": "Чики: Перо Затмения",
+  "description": "Автономная 2D сказка на HTML5 Canvas и JavaScript. Три главы, выбор класса, пошаговые бои, исследование, торговцы и три концовки.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": ["LOCAL_HTML5_CANVAS_GAME"]
 }
-
