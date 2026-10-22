@@ -1,7 +1,6 @@
 {
-  "name": "CosmoChronicle",
-  "description": "Интерактивная космическая обсерватория: симулятор планетных орбит, карта созвездий, гравитационная лаборатория и генератор космического эмбиента.",
+  "name": "Чики: Перо Затмения",
+  "description": "Сюжетная 2D-игра о попугае корелле Чики, ожившей квартире и украденном Золотом Пере.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }
-
