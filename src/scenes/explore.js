@@ -1,4 +1,6 @@
 import { drawRoom } from '../render/rooms.js';
+import { drawFrontDecor } from '../render/decor.js';
+import { applyPostFX, Atmosphere } from '../render/postfx.js';
 import { drawChiki } from '../render/sprites.js';
 import { DustMotes, Particles, drawVignette, drawScanlines } from '../render/effects.js';
 import { CHAPTERS, FONT_UI, UI } from '../render/palette.js';
@@ -31,6 +33,11 @@ export class ExploreScene {
     this.touchLeft = false;
     this.touchRight = false;
     this.dust = new DustMotes(this.room.width, this.room.floorY, 42);
+    this.ambient = new Atmosphere(this.room.width, this.room.floorY, {
+      kind: this.room.decor?.ambient || 'dust',
+      count: this.room.decor?.ambient === 'drip' ? 26 : 40,
+      seed: roomId.length,
+    });
     this.particles = new Particles(180);
     this.hud = new HUD(game);
     this.stepTimer = 0;
@@ -52,6 +59,11 @@ export class ExploreScene {
     this.entryHandled = false;
     this.roomLabelTime = 3;
     this.dust = new DustMotes(room.width, room.floorY, room.art === 'vent' ? 18 : 42);
+    this.ambient = new Atmosphere(room.width, room.floorY, {
+      kind: room.decor?.ambient || 'dust',
+      count: room.decor?.ambient === 'drip' ? 26 : 40,
+      seed: room.art.length,
+    });
     this.particles.clear();
   }
 
@@ -190,6 +202,7 @@ export class ExploreScene {
     this.fade = Math.max(0, this.fade - dt * 2.1);
     this.roomLabelTime = Math.max(0, this.roomLabelTime - dt);
     this.dust.update(dt, this.time);
+    this.ambient.update(dt, this.time);
     this.particles.update(dt);
 
     if (game.overlays.length) {
@@ -411,14 +424,26 @@ export class ExploreScene {
     this.particles.draw(ctx);
     ctx.restore();
 
+    // передний план с параллаксом — глубина кадра
+    drawFrontDecor(ctx, this.room, cam, 1280, this.time);
+    this.ambient.draw(ctx, cam, 1280);
+
     // передний план
     const fg = ctx.createLinearGradient(0, 560, 0, 720);
     fg.addColorStop(0, 'rgba(6, 8, 14, 0)');
     fg.addColorStop(1, 'rgba(6, 8, 14, 0.55)');
     ctx.fillStyle = fg;
     ctx.fillRect(0, 560, 1280, 160);
-    drawVignette(ctx, 1280, 720, 0.45);
-    drawScanlines(ctx, 1280, 720, 0.02);
+    drawVignette(ctx, 1280, 720, 0.4);
+    // кинематографичная обработка: цвет главы, зерно, мягкий свет
+    applyPostFX(ctx, {
+      width: 1280,
+      height: 720,
+      chapter: this.room.chapter,
+      time: this.time,
+      intensity: 0.9,
+    });
+    drawScanlines(ctx, 1280, 720, 0.015);
 
     game.ui.begin(ctx);
     this.hud.draw(ctx, this, this.room);

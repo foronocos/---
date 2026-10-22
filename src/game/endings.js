@@ -12,6 +12,9 @@ export function computeEnding(state, finalChoice) {
   const kindness = player.kindness;
   const greed = player.greed;
 
+  const shunyaSpared = player.bosses?.shunya === 'spare';
+  const peaceful = shunyaSpared && kindness >= 5 && allies >= 4;
+
   if (finalChoice === 'feather') {
     if (greed >= kindness + 1) return 'eclipse';
     return 'keeper';
@@ -22,6 +25,7 @@ export function computeEnding(state, finalChoice) {
     return 'quiet';
   }
 
+  if (peaceful) return 'dawn';
   if (kindness >= 3 && allies >= 2) return 'flock';
   if (kindness >= 2) return 'morning';
   return 'caged';

@@ -124,12 +124,44 @@ export const CLASSES = [
 export const CLASS_UPGRADE_PRICE = 2;
 export const ULT_PRICE = 6;
 
+/**
+ * Улучшения второго круга: открываются, когда история уходит выше крыши.
+ * Работают для любого класса — покупаются у новых торговцев.
+ */
+export const COMMON_UPGRADES = [
+  {
+    id: 'vitality2',
+    name: 'Тёплое гнездо',
+    desc: '+3 к максимальному здоровью (второй круг).',
+    price: 3,
+    effect: { maxHp: 3 },
+  },
+  {
+    id: 'power2',
+    name: 'Закалённый клюв',
+    desc: '+1 к урону каждого удара (второй круг).',
+    price: 3,
+    effect: { bonus: 1 },
+  },
+  {
+    id: 'skill3',
+    name: 'Третье дыхание',
+    desc: '+1 применение классового умения за бой (второй круг).',
+    price: 3,
+    effect: { skillUses: 1 },
+  },
+];
+
 export function getClass(classId) {
   return CLASSES.find((cls) => cls.id === classId) || CLASSES[0];
 }
 
 export function getUpgrade(classId, upgradeId) {
-  return getClass(classId).upgrades.find((upgrade) => upgrade.id === upgradeId) || null;
+  return (
+    getClass(classId).upgrades.find((upgrade) => upgrade.id === upgradeId) ||
+    COMMON_UPGRADES.find((upgrade) => upgrade.id === upgradeId) ||
+    null
+  );
 }
 
 export function getSkill(classId) {

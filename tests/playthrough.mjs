@@ -215,6 +215,14 @@ function fightBot(game, enemyId, allowance = 3) {
       tick(game);
     } else tick(game);
   }
+  if (!game.state.player.bosses[enemyId] && process.env.DBG) {
+    const m = game.combatScene?.model;
+    console.log('STUCK', enemyId, m && {
+      hp: m.playerHp, enemyHp: m.enemyHp, outcome: m.outcome, phase: game.combatScene?.phase,
+      canAct: game.combatScene?.canAct, victory: game.combatScene?.victory, defeat: game.combatScene?.defeatShown,
+      intent: m.intent?.kind, turn: m.turn, log: m.log.slice(-6).map((l) => l.text || l),
+    });
+  }
   assert.ok(game.state.player.bosses[enemyId], `бой с ${enemyId} завершён`);
   game.lastRetries = (game.lastRetries || 0) + retries;
   if (process.env.DBG) console.log('  boss', enemyId, 'retries', retries, 'hp', game.state.player.hp, 'seeds', game.state.player.seeds, 'upg', JSON.stringify(game.state.player.upgrades), 'ult', game.state.player.ultOwned, 'items', JSON.stringify(game.state.player.items));
@@ -323,17 +331,61 @@ function playthrough(classId) {
   fightBot(game, 'pasta');
   collectLoot(game);
 
-  // финал
+  // финал первого акта — дверь наверх
   travel(game, 'balcony');
-  for (let i = 0; i < 200; i += 1) {
-    if (game.scene instanceof EndingScene) break;
+  for (let i = 0; i < 400; i += 1) {
     const scene = game.topOverlay();
     if (scene instanceof DialogueScene) {
       if (scene.isTyping) tick(game, { pressed: ['Space'] });
       else if (scene.visibleChoices.length) {
         if (process.env.DBG) console.log('FINAL CHOICE', scene.visibleChoices.map((c) => c.label));
         tick(game, { pressed: ['Digit1'] });
+      } else tick(game, { pressed: ['Space'] });
+    } else if (game.state.roomId === 'stairs') break;
+    else tick(game);
+  }
+  resolveDialogues(game);
+  assert.equal(game.state.roomId, 'stairs', 'балкон выводит на лестницу');
+  assert.equal(game.state.chapter, 5, 'начинается второй акт');
+
+  // ---------------------------------------------------------- второй акт
+  const actTwo = [
+    ['stairs', null, 'landing'],
+    ['landing', 'keys', 'basement'],
+    ['basement', null, 'boiler'],
+    ['boiler', 'boiler', 'attic'],
+    ['attic', null, 'trunks'],
+    ['trunks', 'moth', 'roof'],
+    ['roof', null, 'antennas'],
+    ['antennas', 'raven', 'eclipse'],
+    ['eclipse', null, 'mirrorRoof'],
+    ['mirrorRoof', 'shadow', 'nest'],
+    ['nest', 'shunya', 'skyDawn'],
+  ];
+  for (const [roomId, boss, nextRoom] of actTwo) {
+    travel(game, roomId);
+    collectLoot(game);
+    if (boss) {
+      if (!game.state.player.bosses[boss]) {
+        shopBeforeFight(game);
+        upgradeBeforeFight(game);
+        talkTo(game, boss);
+        fightBot(game, boss);
       }
+      assert.ok(game.state.player.bosses[boss], `босс ${boss} пройден`);
+    }
+    if (nextRoom) travel(game, nextRoom);
+  }
+
+  // финальный выбор в небе
+  assert.equal(game.state.roomId, 'skyDawn', 'гнездо выводит в небо');
+  talkTo(game, 'altar');
+  for (let i = 0; i < 400; i += 1) {
+    if (game.scene instanceof EndingScene) break;
+    const scene = game.topOverlay();
+    if (scene instanceof DialogueScene) {
+      if (scene.isTyping) tick(game, { pressed: ['Space'] });
+      else if (scene.visibleChoices.length) tick(game, { pressed: ['Digit1'] });
       else tick(game, { pressed: ['Space'] });
     } else tick(game);
   }
@@ -342,8 +394,16 @@ function playthrough(classId) {
     assert.ok(game.state.player.kindness >= 1, 'мирное прохождение накапливает доброту');
     assert.ok(allyCount(game.state.player) >= 1, 'мирное прохождение приносит союзника');
     assert.ok(!['eclipse'].includes(game.endingId), 'без жадности тёмная концовка недоступна');
+    assert.ok(
+      ['dawn', 'flock', 'morning', 'quiet', 'keeper'].includes(game.endingId),
+      `мирное прохождение даёт светлую концовку (${game.endingId})`,
+    );
   } else {
-    assert.equal(game.endingId, 'caged', 'путь силой без доброты ведёт к «Солнцу в Клетке»');
+    assert.notEqual(game.endingId, 'dawn', 'без мира с Шуней рассвет не наступает');
+    assert.ok(
+      ['caged', 'eclipse', 'morning', 'keeper'].includes(game.endingId),
+      `силовой путь даёт свою концовку (${game.endingId})`,
+    );
   }
   return {
     ending: game.endingId,

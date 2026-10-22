@@ -62,6 +62,7 @@ export class DialogueScene {
         this.stopped = true;
         return;
       }
+      if (result.travel) this.finishAfterLine = true;
       if (result.skipped) {
         // эффект уже был применён ранее — просто продолжаем
       }
@@ -125,6 +126,14 @@ export class DialogueScene {
       const after = Math.floor(this.chars);
       if (after > before && after % 3 === 0) this.game.audio.blip();
       if (this.chars >= this.node.text.length) this.chars = this.node.text.length;
+    }
+
+    if (this.finishAfterLine && !this.isTyping && !this.closed) {
+      this.finishTimer = (this.finishTimer || 0) + dt;
+      if (this.finishTimer > 2.2 || input.consumePressed('Space') || input.consumePressed('Enter')) {
+        this.finish();
+        return;
+      }
     }
 
     const choicesVisible = this.visibleChoices.length > 0 && !this.isTyping;

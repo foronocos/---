@@ -9,6 +9,8 @@ import {
   drawSeed,
 } from './sprites.js';
 import { isPropHidden } from '../data/chapters.js';
+import { BACKGROUNDS_ACT2, EXTRA_PROPS } from './roomsB.js';
+import { drawBackDecor } from './decor.js';
 import { clamp } from '../core/util.js';
 
 function seeded(value) {
@@ -1181,6 +1183,11 @@ function drawLooseBoard(ctx, prop) {
 }
 
 function drawProp(ctx, prop, state, time) {
+  const extra = EXTRA_PROPS[prop.art];
+  if (extra) {
+    extra(ctx, prop, state, time);
+    return;
+  }
   switch (prop.art) {
     case 'cage':
       drawCage(ctx, prop, state, time);
@@ -1741,6 +1748,7 @@ function drawBalconyBackground(ctx, room, palette, time) {
 }
 
 const BACKGROUNDS = {
+  ...BACKGROUNDS_ACT2,
   living: drawLivingBackground,
   hall: drawHallBackground,
   bath: drawBathBackground,
@@ -1756,6 +1764,7 @@ export function drawRoom(ctx, room, state, time) {
   ctx.save();
   const drawBackground = BACKGROUNDS[room.art] || drawLivingBackground;
   drawBackground(ctx, room, palette, time);
+  drawBackDecor(ctx, room, time);
 
   const lockedIds = new Set();
   for (const door of room.doors) {

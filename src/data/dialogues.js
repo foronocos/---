@@ -1,4 +1,5 @@
 import { NOTES } from './notes.js';
+import { DIALOGUES_ACT2 } from './dialoguesB.js';
 
 /** Линейная сцена: [[говорящий, текст], ...] или ['', 'текст']. */
 function seq(lines, options = {}) {
@@ -40,7 +41,7 @@ function say(speaker, text, options = {}) {
   return { speaker, tone: 'speech', text, ...options };
 }
 
-export const DIALOGUES = {
+const DIALOGUES_ACT1 = {
   intro: {
     start: 'n0',
     nodes: {
@@ -837,20 +838,61 @@ export const DIALOGUES = {
         tone: 'speech',
         text: 'Я могу вернуть перо на дверь. Могу оставить его себе. Могу остаться здесь — но уже не в клетке. Что бы выбрал ты?',
         choices: [
-          { label: 'Выйти на свет', next: 'out', effects: { ending: 'out' } },
-          { label: 'Оставить дверь открытой для всех', next: 'stay', effects: { ending: 'stay' } },
-          { label: 'Забрать Золотое Перо себе', next: 'take', effects: { ending: 'feather' } },
+          {
+            label: 'Выйти на свет — и позвать остальных',
+            next: 'out',
+            effects: { kindness: 1, toast: 'Доброта +1' },
+          },
+          {
+            label: 'Оставить дверь открытой для всех',
+            next: 'stay',
+            effects: { kindness: 1, toast: 'Доброта +1' },
+          },
+          {
+            label: 'Забрать Золотое Перо себе',
+            next: 'take',
+            effects: { greed: 1, toast: 'Жадность +1' },
+          },
         ],
       },
-      out: node('Чики расправил крылья. Впервые — не чтобы удержаться, а чтобы идти.', {
-        end: true,
-      }),
-      stay: node('Чики положил перо на перила и открыл дверь шире. Пусть утро входит. Пусть входят все.', {
-        end: true,
-      }),
-      take: node('Чики спрятал перо под крыло. Оно было тёплым. Пока.', {
-        end: true,
-      }),
+      out: node(
+        'Чики расправил крылья. Впервые — не чтобы удержаться, а чтобы идти. И в этот самый миг перо в его клюве дрогнуло.',
+        { next: 'pull' },
+      ),
+      stay: node(
+        'Чики положил перо на перила и открыл дверь шире. Пусть утро входит. Пусть входят все. Перо не согласилось лежать.',
+        { next: 'pull' },
+      ),
+      take: node(
+        'Чики спрятал перо под крыло. Оно было тёплым. Слишком тёплым — и вдруг потянуло вверх, как тянет за нитку.',
+        { next: 'pull' },
+      ),
+      pull: node(
+        'Перо вырвалось из клюва и пошло вверх — не в небо, а вдоль стены дома, туда, где над балконом начиналась лестница. На миг оно вспыхнуло и рассыпалось: в клюве остался только тёплый осколок.',
+        { next: 'voice1' },
+      ),
+      voice1: say(
+        'Голос',
+        'То, что ты держал, было лишь отблеском. Настоящее Перо выше — там, где дом кончается и начинается ночь.',
+        { next: 'voice2' },
+      ),
+      voice2: say(
+        'Чики',
+        'Значит, я ещё не вышел. Я только перестал ждать.',
+        { next: 'up' },
+      ),
+      up: node(
+        'Дверь за спиной осталась открытой. Лестница поднялась из темноты сама, будто ждала. Первый шаг вверх был самым трудным — и самым лёгким.',
+        {
+          end: true,
+          endEffects: {
+            flag: 'act2',
+            keyItem2: 'shard',
+            toast: 'Осколок пера в клюве. Дом продолжается наверх.',
+            travel: { room: 'stairs', spawn: 260 },
+          },
+        },
+      ),
     },
   },
 };
@@ -888,3 +930,5 @@ export function getPortrait(speaker) {
 export function getSpeakerColor(speaker) {
   return SPEAKER_COLORS[speaker] || '#f4e9ce';
 }
+
+export const DIALOGUES = { ...DIALOGUES_ACT1, ...DIALOGUES_ACT2 };
