@@ -2,7 +2,9 @@ node_modules/
 build/
 dist/
 coverage/
-.DS_Store
+.cache/
+out/
 *.log
+.DS_Store
 .env*
 !.env.example
