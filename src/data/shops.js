@@ -70,6 +70,56 @@ export const SHOPS = {
         : '— Не задерживайся. Утро само себя не встретит.';
     },
   },
+
+  // ------------------------------------------------------------- Акт II
+  moth: {
+    id: 'moth',
+    name: 'Моль-Торговка',
+    art: 'moth',
+    tagline: 'чердак, между сундуками и памятью',
+    getGreeting(state) {
+      if (state.chapter >= 9) return '— Ты всё ещё идёшь. Тогда возьми тёплое: выше будет холодно.';
+      return '— Выбирай. Всё, что здесь лежит, когда-то было чьим-то самым важным. Теперь — твоё.';
+    },
+    stock(state) {
+      const list = [
+        { key: 'item:tonic', price: 2 },
+        { key: 'item:charm', price: 3 },
+        { key: 'upgrade:vitality2', price: 3 },
+        { key: 'healService', price: 2 },
+        { key: 'hint:act2', price: 1 },
+      ];
+      if (state.chapter >= 8) list.push({ key: 'item:honey', price: 2 });
+      return list;
+    },
+    getClosing() {
+      return '— Иди. И не забывай: то, что ты хранишь, хранит тебя.';
+    },
+  },
+  raven: {
+    id: 'raven',
+    name: 'Ворон-Барыга',
+    art: 'raven',
+    tagline: 'крыша, гнездо, только блестящее',
+    getGreeting(state) {
+      if (state.chapter >= 10) return '— Последняя сделка? Ладно. Только не проси луну: она не блестит, она светит.';
+      return '— Блестит? Плати. Не блестит? Всё равно плати, я сегодня добрый.';
+    },
+    stock(state) {
+      const list = [
+        { key: 'item:double', price: 2 },
+        { key: 'upgrade:power2', price: 3 },
+        { key: 'upgrade:skill3', price: 3 },
+        { key: 'ult', price: 6 },
+        { key: 'hint:shunya', price: 1 },
+      ];
+      if (state.chapter >= 9) list.push({ key: 'item:eye', price: 3, tag: 'редкое' });
+      return list;
+    },
+    getClosing() {
+      return '— И не блести в темноте. Заметят.';
+    },
+  },
 };
 
 export function getShop(shopId) {
@@ -80,10 +130,19 @@ export function describeStockEntry(state, entry) {
   const { player } = state;
   if (entry.key.startsWith('item:')) {
     const itemId = entry.key.slice(5);
-    const names = { heal: 'Семечко-лечение', honey: 'Медовая капля', double: 'Двойное зерно', eye: 'Глаз Голубя' };
+    const names = {
+      heal: 'Семечко-лечение',
+      honey: 'Медовая капля',
+      tonic: 'Настойка из коры',
+      charm: 'Талисман из перьев',
+      double: 'Двойное зерно',
+      eye: 'Глаз Голубя',
+    };
     const descs = {
       heal: 'Восстанавливает 5 HP. Применяется в бою без траты хода.',
       honey: 'Восстанавливает 9 HP. Один предмет за ход.',
+      tonic: 'Восстанавливает 12 HP. Тяжёлая склянка с подвальным теплом.',
+      charm: '+3 к урону следующего удара. Один раз за бой.',
       double: 'Первый удар боя наносит двойной урон.',
       eye: 'Точные намерения врагов до их хода.',
     };
@@ -120,6 +179,22 @@ export function describeStockEntry(state, entry) {
       name: 'Голубиный контракт',
       desc: 'Гоша будет наносить 3 урона в начале каждого боя. Один раз.',
       owned: player.allies.pigeon,
+      affordable: player.seeds >= entry.price,
+    };
+  }
+  if (entry.key === 'hint:act2') {
+    return {
+      name: 'Подсказка о верхнем пути',
+      desc: 'Моль расскажет, как устроен дом выше подъезда.',
+      owned: Boolean(player.flags.boughtHintAct2),
+      affordable: player.seeds >= entry.price,
+    };
+  }
+  if (entry.key === 'hint:shunya') {
+    return {
+      name: 'Подсказка о Шуне',
+      desc: 'Ворон расскажет, чего боится та, что держит ночь.',
+      owned: Boolean(player.flags.boughtHintShunya),
       affordable: player.seeds >= entry.price,
     };
   }

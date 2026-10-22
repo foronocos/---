@@ -56,9 +56,17 @@ const AFTER_COMBAT = {
   cat: { spare: 'cat_spare_after', kill: 'cat_kill_after' },
   vacuum: { spare: 'vacuum_spare_after', kill: 'vacuum_kill_after' },
   pasta: { spare: 'pasta_spare_after', kill: 'pasta_kill_after' },
+  keys: { spare: 'keys_spare_after', kill: 'keys_kill_after' },
+  boiler: { spare: 'boiler_spare_after', kill: 'boiler_kill_after' },
+  moth: { spare: 'moth_spare_after', kill: 'moth_kill_after' },
+  raven: { spare: 'raven_spare_after', kill: 'raven_kill_after' },
+  shadow: { spare: 'shadow_spare_after', kill: 'shadow_kill_after' },
+  shunya: { spare: 'shunya_spare_after', kill: 'shunya_kill_after' },
 };
 
-const COMBAT_BOSS_BY_ID = { cat: 'cat', vacuum: 'vacuum', pasta: 'pasta' };
+const COMBAT_BOSS_BY_ID = Object.fromEntries(
+  ['cat', 'vacuum', 'pasta', 'keys', 'boiler', 'moth', 'raven', 'shadow', 'shunya'].map((id) => [id, id]),
+);
 
 export class Game {
   constructor(canvas) {
@@ -194,6 +202,13 @@ export class Game {
   }
 
   update(dt) {
+    if (this.pendingTravel && !this.overlays.length) {
+      const travel = this.pendingTravel;
+      this.pendingTravel = null;
+      if (this.state) {
+        this.transitionTo(() => this.enterRoom(travel.room, travel.spawn));
+      }
+    }
     if (this.state) this.state.playTime += dt;
     if (this.scene && typeof this.scene.update === 'function') this.scene.update(dt);
     const top = this.topOverlay();
@@ -399,9 +414,10 @@ export class Game {
    * или открыл бой/магазин — проигрыватель диалога должен остановиться.
    */
   applyEffects(effects) {
-    if (!effects || !this.state) return { stop: false };
+    if (!effects || !this.state) return { stop: false, travel: false };
     const player = this.state.player;
     let stop = false;
+    let travel = false;
     let changed = false;
 
     if (effects.once) {
@@ -447,14 +463,22 @@ export class Game {
     }
     if (effects.keyItem) {
       player.keyItems[effects.keyItem] = true;
-      const names = { key: 'Запасной ключ от балкона', feather: 'Золотое Перо' };
+      const names = {
+        key: 'Запасной ключ от балкона',
+        feather: 'Золотое Перо',
+        shard: 'Осколок Золотого Пера',
+      };
       this.toast(`Получено: ${names[effects.keyItem] || effects.keyItem}`, 'gold');
       this.audio.coin();
       changed = true;
     }
     if (effects.keyItem2) {
       player.keyItems[effects.keyItem2] = true;
-      const names = { key: 'Запасной ключ от балкона', feather: 'Золотое Перо' };
+      const names = {
+        key: 'Запасной ключ от балкона',
+        feather: 'Золотое Перо',
+        shard: 'Осколок Золотого Пера',
+      };
       this.toast(`Получено: ${names[effects.keyItem2] || effects.keyItem2}`, 'gold');
       this.audio.coin();
       changed = true;
@@ -499,6 +523,10 @@ export class Game {
     if (effects.toast) {
       this.toast(effects.toast, effects.toastTone || 'gold');
     }
+    if (effects.travel) {
+      this.pendingTravel = effects.travel;
+      travel = true;
+    }
     if (changed) this.save();
 
     if (effects.startCombat) {
@@ -511,7 +539,7 @@ export class Game {
       this.showEnding(effects.ending);
       stop = true;
     }
-    return { stop };
+    return { stop, travel };
   }
 
   // ---------------------------------------------------------------------- бой
@@ -646,6 +674,30 @@ export class Game {
       this.audio.coin();
       this.save();
       return { ok: true, message: 'Голубиный контракт подписан. Гоша будет бить первым.' };
+    }
+
+    if (key === 'hint:act2') {
+      if (getFlag(this.state, 'boughtHintAct2')) return { ok: false, message: 'Подсказка уже куплена.' };
+      player.seeds -= entry.price;
+      setFlag(this.state, 'boughtHintAct2', true);
+      this.audio.coin();
+      this.save();
+      return {
+        ok: true,
+        message: '«Подъезд, подвал, чердак, крыша. Везде кто-то ждёт, чтобы его наконец услышали».',
+      };
+    }
+
+    if (key === 'hint:shunya') {
+      if (getFlag(this.state, 'boughtHintShunya')) return { ok: false, message: 'Подсказка уже куплена.' };
+      player.seeds -= entry.price;
+      setFlag(this.state, 'boughtHintShunya', true);
+      this.audio.coin();
+      this.save();
+      return {
+        ok: true,
+        message: '«Шуня не боится силы. Она боится, что её поблагодарят — и тогда придётся отпустить ночь».',
+      };
     }
 
     if (key === 'hint:finale') {

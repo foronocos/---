@@ -1,4 +1,5 @@
 import { bossResolved } from '../game/state.js';
+import { ROOMS_ACT2 } from './chaptersB.js';
 
 const catDialogue = (state) => {
   const outcome = state.player.bosses.cat;
@@ -21,7 +22,7 @@ const pastaDialogue = (state) => {
   return 'pasta_meet';
 };
 
-export const ROOMS = {
+const ROOMS_ACT1 = {
   living: {
     id: 'living',
     chapter: 1,
@@ -160,6 +161,18 @@ export const ROOMS = {
         art: 'door',
         getLocked(state) {
           return bossResolved(state.player, 'cat') ? null : 'pantry_locked';
+        },
+      },
+      {
+        id: 'hall_stairs',
+        x: 2050,
+        to: 'stairs',
+        spawnX: 180,
+        label: 'В подъезд',
+        art: 'door',
+        labelOffset: -40,
+        getLocked(state) {
+          return state.player.flags.act2 ? null : 'stairs_locked';
         },
       },
       {
@@ -651,12 +664,22 @@ export const ROOMS = {
     spawn: 380,
     art: 'balcony',
     onEnter(state) {
-      return state.ending ? null : 'finale';
+      if (state.ending) return null;
+      if (state.player && state.player.flags && state.player.flags.leftBalcony) return null;
+      if (state.player && state.player.flags && state.player.flags.act2) return null;
+      return 'finale';
     },
     doors: [],
     props: [],
   },
 };
+
+export const ROOMS = { ...ROOMS_ACT1, ...ROOMS_ACT2 };
+
+/** Карта комнат по главам — для журнала и отладки. */
+export function roomsOfChapter(chapter) {
+  return Object.values(ROOMS).filter((room) => room.chapter === chapter);
+}
 
 export function getRoom(roomId) {
   return ROOMS[roomId] || ROOMS.living;

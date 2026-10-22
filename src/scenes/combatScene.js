@@ -5,6 +5,7 @@ import {
   drawPasta,
   drawVacuum,
 } from '../render/sprites.js';
+import { BOSS_SPRITES } from '../render/spritesB.js';
 import { getEnemy } from '../data/enemies.js';
 import { ITEMS } from '../data/items.js';
 import { getClass } from '../data/classes.js';
@@ -29,7 +30,17 @@ const TONE_COLORS = {
   buff: '#c9e8a8',
 };
 
-const ENEMY_SCALE = { cat: 1.32, vacuum: 1.12, pasta: 0.98 };
+const ENEMY_SCALE = {
+  cat: 1.32,
+  vacuum: 1.12,
+  pasta: 0.98,
+  keys: 1.05,
+  boiler: 1.0,
+  moth: 1.02,
+  raven: 1.0,
+  shadow: 1.05,
+  shunya: 1.0,
+};
 const ENEMY_X = 980;
 const PLAYER_X = 255;
 const FLOOR_Y = 468;
@@ -282,6 +293,11 @@ export class CombatScene {
         this.handleDefeat();
         return;
       }
+      // Обратный коготь и прочие отражения могут добить врага в его же ход.
+      if (this.model.enemyHp <= 0) {
+        this.finishVictory('kill');
+        return;
+      }
       if (result.pastaOffer) {
         this.showPastaOffer();
         return;
@@ -293,6 +309,10 @@ export class CombatScene {
   beginTurn() {
     if (this.model.outcome === 'defeat') {
       this.handleDefeat();
+      return;
+    }
+    if (this.model.enemyHp <= 0) {
+      this.finishVictory('kill');
       return;
     }
     const result = this.model.beginPlayerTurn();
@@ -427,6 +447,14 @@ export class CombatScene {
         scale,
         time: this.time,
         angry: this.model.enemyHp / this.model.enemyMaxHp > 0.35,
+      });
+    } else if (BOSS_SPRITES[enemyId]) {
+      const mood = this.model.enemyHp / this.model.enemyMaxHp < 0.35 ? 'angry' : 'idle';
+      BOSS_SPRITES[enemyId](ctx, x, FLOOR_Y + 14, {
+        scale,
+        time: this.time,
+        facing: -1,
+        mood,
       });
     } else {
       drawPasta(ctx, x, FLOOR_Y + 12, { scale, time: this.time });
@@ -776,7 +804,9 @@ export class CombatScene {
     if (!this.itemMenu) return;
     const ui = this.game.ui;
     ui.panel(660, 270, 596, 226, { title: 'Предметы в бою' });
-    const owned = ['heal', 'honey', 'double'].filter((id) => (this.model.inventory[id] || 0) > 0);
+    const owned = ['heal', 'honey', 'tonic', 'double', 'charm'].filter(
+      (id) => (this.model.inventory[id] || 0) > 0,
+    );
     if (!owned.length) {
       ui.text('Карманы пусты. Даже крошек нет.', 958, 360, { size: 16, color: UI.muted, align: 'center' });
     }
@@ -794,7 +824,7 @@ export class CombatScene {
         sublabel: item.desc.slice(0, 80),
         align: 'left',
         fontSize: 15,
-        icon: id === 'heal' ? 'seed' : id === 'honey' ? 'heart' : 'star',
+        icon: id === 'heal' || id === 'tonic' ? 'seed' : id === 'honey' ? 'heart' : id === 'charm' ? 'feather' : 'star',
         disabled,
         onClick: () => this.useItem(id),
       });
@@ -824,7 +854,10 @@ export class CombatScene {
     const ui = this.game.ui;
     const model = this.model;
     const skill = getStats(this.game.state.player).skill;
-    const items = ['heal', 'honey', 'double'].reduce((sum, id) => sum + (model.inventory[id] || 0), 0);
+    const items = ['heal', 'honey', 'tonic', 'double', 'charm'].reduce(
+      (sum, id) => sum + (model.inventory[id] || 0),
+      0,
+    );
     const disabled = !this.canAct;
 
     if (model.canSpare()) {
@@ -1160,7 +1193,7 @@ export class CombatScene {
       if (input.consumePressed('Digit1')) this.doAttack();
       else if (input.consumePressed('Digit2')) this.doSkill();
       else if (input.consumePressed('Digit3')) {
-        const items = ['heal', 'honey', 'double'].reduce(
+        const items = ['heal', 'honey', 'tonic', 'double', 'charm'].reduce(
           (sum, id) => sum + (this.model.inventory[id] || 0),
           0,
         );

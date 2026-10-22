@@ -197,10 +197,10 @@ function makeModel(classId, enemyId, rolls = [], options = {}) {
 {
   const state = reconcileState(createGame('knight'));
   state.player.hp = 999;
-  state.chapter = 9;
+  state.chapter = 42;
   reconcileState(state);
   ok(state.player.hp === state.player.maxHp, 'загрузка чинит превышение HP');
-  ok(state.chapter === 4, 'глава ограничена четвёртой');
+  ok(state.chapter === 10, 'глава ограничена десятой');
 }
 
 // ------------------------------------------------------------------ концовки
@@ -245,7 +245,7 @@ function makeModel(classId, enemyId, rolls = [], options = {}) {
     ok(computeEnding(state, 'feather') === 'keeper', 'забрать перо без жадности — «Хранитель»');
   }
   const reachable = new Set();
-  for (const kindness of [0, 1, 2, 3, 4]) {
+  for (const kindness of [0, 1, 2, 3, 4, 5, 6]) {
     for (const greed of [0, 1, 2, 3]) {
       for (const choice of ['out', 'stay', 'feather']) {
         const state = createGame('knight');
@@ -253,11 +253,14 @@ function makeModel(classId, enemyId, rolls = [], options = {}) {
         state.player.greed = greed;
         state.player.allies.cat = kindness >= 3;
         state.player.allies.pigeon = kindness >= 3;
+        state.player.allies.vacuum = kindness >= 5;
+        state.player.allies.moth = kindness >= 5;
+        state.player.bosses.shunya = kindness >= 5 ? 'spare' : 'kill';
         reachable.add(computeEnding(state, choice));
       }
     }
   }
-  ok(reachable.size === Object.keys(ENDINGS).length, 'все шесть концовок достижимы');
+  ok(reachable.size === Object.keys(ENDINGS).length, 'все концовки достижимы');
 }
 
 // ------------------------------------------------------------------ журнал

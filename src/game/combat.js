@@ -23,12 +23,15 @@ export class CombatModel {
     this.seeds = player.seeds;
     this.inventory = { heal: 0, honey: 0, double: 0, ...(player.items || {}) };
     this.hasEye = Boolean(player.hasEye);
+    this.kindness = player.kindness || 0;
     this.ultAvailable = Boolean(player.ultOwned && !player.ultUsed);
     this.ultUsedHere = false;
     this.allies = {
       cat: Boolean(player.allies?.cat),
       pigeon: Boolean(player.allies?.pigeon),
       vacuum: Boolean(player.allies?.vacuum),
+      boiler: Boolean(player.allies?.boiler),
+      shadow: Boolean(player.allies?.shadow),
     };
     this.upgrades = { ...(player.upgrades || {}) };
 
@@ -57,6 +60,13 @@ export class CombatModel {
     this.intent = null;
     this.pendingPastaOffer = false;
     this.turnsTaken = 0;
+    this.enemyArmor = 0;
+    this.rollPenalty = 0;
+    this.charmPending = 0;
+    this.charmUsed = false;
+    this.shunyaPhase = false;
+    this.enraged = false;
+    this.stolenItems = 0;
   }
 
   pushLog(text, tone = 'normal') {
@@ -75,6 +85,12 @@ export class CombatModel {
         this.pushLog('Противник не выдержал голубиной атаки.', 'good');
         return;
       }
+    }
+    if (this.allies.boiler && this.playerHp < this.maxHp) {
+      const before = this.playerHp;
+      this.playerHp = Math.min(this.maxHp, this.playerHp + 3);
+      const healed = this.playerHp - before;
+      if (healed > 0) this.pushLog(`Котёл подкинул тепла: +${healed} HP.`, 'ally');
     }
     this.computeIntent();
     this.pushLog(`Намерение врага: ${this.intent.short}.`, 'intent');
@@ -96,9 +112,28 @@ export class CombatModel {
       };
       return;
     }
+    if (this.enemyId === 'keys' && nextTurn % 3 === 0) {
+      this.intent = { kind: 'armor', short: 'запереться на три замка', damage: 0, exact: true };
+      return;
+    }
+    if (this.enemyId === 'boiler' && nextTurn % 3 === 0) {
+      this.intent = { kind: 'burst', short: `сбросить пар: ${this.def.damage + 3} урона`, damage: this.def.damage + 3, exact: true };
+      return;
+    }
+    if (this.enemyId === 'moth' && nextTurn % 3 === 0) {
+      this.intent = { kind: 'steal', short: 'съесть предмет из сумки', damage: 0, exact: true };
+      return;
+    }
+    if (this.enemyId === 'raven' && nextTurn % 4 === 0) {
+      this.intent = { kind: 'stealSeed', short: 'украсть семя', damage: 0, exact: true };
+      return;
+    }
     this.intent = { kind: 'attack', short: `удар на ${this.def.damage}`, damage: this.def.damage, exact: false };
     if (this.enemyId === 'pasta' && !this.macOffered && this.enemyTurnCount >= 1) {
       this.intent = { kind: 'offer', short: 'предложить макароны', damage: 0, exact: true };
+    }
+    if (this.enemyId === 'shunya' && this.shunyaPhase) {
+      this.intent.short = `удар на ${this.def.damage + (this.enraged ? 2 : 0)}`;
     }
   }
 
@@ -109,11 +144,19 @@ export class CombatModel {
       if (this.intent.kind === 'hide') return 'Спрячется: удар не пройдёт';
       if (this.intent.kind === 'inhale') return `Втянет: удар ${this.def.damage} + пропуск хода`;
       if (this.intent.kind === 'offer') return 'Предложит макароны';
+      if (this.intent.kind === 'armor') return 'Запрётся: броня +3';
+      if (this.intent.kind === 'burst') return `Сбросит пар: ${this.def.damage + 3}`;
+      if (this.intent.kind === 'steal') return 'Съест предмет из сумки';
+      if (this.intent.kind === 'stealSeed') return 'Украдёт одно семя';
     }
     if (this.intent.kind === 'attack') return 'Готовится ударить';
     if (this.intent.kind === 'hide') return 'Прячется под диван';
     if (this.intent.kind === 'inhale') return 'Всасывает воздух…';
     if (this.intent.kind === 'offer') return 'Что-то задумал';
+    if (this.intent.kind === 'armor') return 'Щёлкает замками';
+    if (this.intent.kind === 'burst') return 'Набирает давление';
+    if (this.intent.kind === 'steal') return 'Принюхивается к сумке';
+    if (this.intent.kind === 'stealSeed') return 'Косится на семена';
     return '—';
   }
 
@@ -154,6 +197,13 @@ export class CombatModel {
       outcome: this.outcome,
       turnsTaken: this.turnsTaken,
       damageDealt: this.damageDealt,
+      enemyArmor: this.enemyArmor,
+      rollPenalty: this.rollPenalty,
+      charmPending: this.charmPending,
+      charmUsed: this.charmUsed,
+      shunyaPhase: this.shunyaPhase,
+      enraged: this.enraged,
+      stolenItems: this.stolenItems,
     };
   }
 
@@ -183,6 +233,13 @@ export class CombatModel {
     this.outcome = s.outcome;
     this.turnsTaken = s.turnsTaken;
     this.damageDealt = s.damageDealt;
+    this.enemyArmor = s.enemyArmor ?? 0;
+    this.rollPenalty = s.rollPenalty ?? 0;
+    this.charmPending = s.charmPending ?? 0;
+    this.charmUsed = Boolean(s.charmUsed);
+    this.shunyaPhase = Boolean(s.shunyaPhase);
+    this.enraged = Boolean(s.enraged);
+    this.stolenItems = s.stolenItems ?? 0;
     return true;
   }
 
@@ -206,9 +263,15 @@ export class CombatModel {
   }
 
   computeHit(multiplier = 1) {
-    const roll = this.rng.d6();
+    const raw = this.rng.d6();
+    const roll = Math.max(1, raw - this.rollPenalty);
     const crit = roll === 6;
     let damage = roll + this.stats.bonus;
+    if (this.charmPending) {
+      damage += this.charmPending;
+      this.charmPending = 0;
+    }
+    if (this.allies.shadow && this.playerHp <= this.maxHp / 2) damage += 1;
     if (crit) damage *= this.stats.critMult;
     let skillMult = multiplier;
     if (this.backstab) {
@@ -227,8 +290,19 @@ export class CombatModel {
   }
 
   applyDamageToEnemy(damage) {
+    let incoming = damage;
+    if (this.enemyArmor > 0) {
+      const absorbed = Math.min(this.enemyArmor, incoming);
+      this.enemyArmor -= absorbed;
+      incoming -= absorbed;
+      if (absorbed > 0) this.pushLog(`Замки приняли ${absorbed} урона.`, 'defend');
+    }
+    if (incoming <= 0) {
+      this.pushLog('Удар ушёл в замки: враг не пострадал.', 'defend');
+      return 0;
+    }
     const before = this.enemyHp;
-    this.enemyHp = Math.max(0, this.enemyHp - damage);
+    this.enemyHp = Math.max(0, this.enemyHp - incoming);
     const real = before - this.enemyHp;
     this.damageDealt += real;
     if (this.enemyHp <= 0 && !this.outcome) this.outcome = 'kill';
@@ -247,8 +321,23 @@ export class CombatModel {
       : `Бросок ${hit.roll} → ${hit.damage} урона.`;
     this.pushLog(text, hit.crit ? 'crit' : 'player');
     if (hit.doubled) this.pushLog('Двойное зерно сработало: урон удвоен.', 'buff');
+    if (hit.crit && this.enemyId === 'shadow' && !this.outcome) {
+      this.playerHp = Math.max(0, this.playerHp - 2);
+      this.pushLog('Тень отвечает на крит: 2 урона в ответ.', 'enemy');
+      if (this.playerHp <= 0) this.outcome = 'defeat';
+    }
+    if (this.enemyId === 'shunya') this.checkShunyaPhase();
     if (this.outcome === 'kill') this.pushLog(`${this.def.name} падает. Победа!`, 'good');
     return { ok: true, kind: 'attack', hits: [hit] };
+  }
+
+  checkShunyaPhase() {
+    if (this.enemyId !== 'shunya' || this.outcome) return;
+    if (!this.shunyaPhase && this.enemyHp <= this.enemyMaxHp * 0.6) {
+      this.shunyaPhase = true;
+      this.rollPenalty = 1;
+      this.pushLog('Шуня поднимает крылья — свет вокруг гаснет. Каждый бросок слабее на 1.', 'bad');
+    }
   }
 
   useSkill() {
@@ -305,6 +394,16 @@ export class CombatModel {
       this.pushLog('Двойное зерно: первый удар боя будет удвоен.', 'buff');
       return { ok: true, kind: 'double', item };
     }
+    if (item.use.type === 'charm') {
+      if (this.charmUsed) return { ok: false, message: 'Талисман уже применён в этом бою.' };
+      this.charmPending = item.use.amount;
+      this.charmUsed = true;
+      this.inventory[itemId] -= 1;
+      this.itemUsedThisTurn = true;
+      this.itemsUsed += 1;
+      this.pushLog(`Талисман из перьев: следующий удар сильнее на ${item.use.amount}.`, 'buff');
+      return { ok: true, kind: 'charm', item };
+    }
     if (item.use.type === 'heal') {
       const before = this.playerHp;
       this.playerHp = Math.min(this.maxHp, this.playerHp + item.use.amount);
@@ -320,6 +419,14 @@ export class CombatModel {
 
   getEnemyDamage() {
     let damage = this.def.damage;
+    // Шуня в последней четверти боя бьёт сильнее.
+    if (this.enemyId === 'shunya' && this.enemyHp <= this.enemyMaxHp * 0.25) {
+      damage += 2;
+      if (!this.enraged) {
+        this.enraged = true;
+        this.pushLog('— Хватит, — говорит Шуня. — Я слишком долго держала темноту.', 'bad');
+      }
+    }
     // Хозяин Макарон распаляется у плиты: последняя треть боя — самая горячая.
     if (this.enemyId === 'pasta' && this.enemyHp <= this.enemyMaxHp * 0.4) {
       damage += 2;
@@ -357,8 +464,45 @@ export class CombatModel {
       return result;
     }
 
+    if (this.enemyId === 'keys' && this.enemyTurnCount % 3 === 0) {
+      result.armor = 3;
+      this.enemyArmor += 3;
+      this.pushLog('Ключница щёлкает замками: броня +3.', 'defend');
+      this.computeIntent();
+      return result;
+    }
+
+    if (this.enemyId === 'moth' && this.enemyTurnCount % 3 === 0) {
+      const stolen = this.stealRandomItem();
+      result.stolen = stolen;
+      if (stolen) {
+        this.pushLog(`Моль съела предмет из сумки: ${stolen}.`, 'bad');
+      } else {
+        this.pushLog('Моль шарит по сумке, но там уже нечего есть.', 'defend');
+      }
+      this.computeIntent();
+      return result;
+    }
+
+    if (this.enemyId === 'raven' && this.enemyTurnCount % 4 === 0) {
+      if (this.seeds > 0) {
+        this.seeds -= 1;
+        this.stolenSeeds = (this.stolenSeeds || 0) + 1;
+        result.stolenSeed = true;
+        this.pushLog('Ворон сцапал одно семя и унёс в гнездо.', 'bad');
+      } else {
+        this.pushLog('Ворон ищет блестящее, но семян нет.', 'defend');
+      }
+      this.computeIntent();
+      return result;
+    }
+
     const hadShield = this.shield;
     let damage = this.getEnemyDamage();
+    if (this.enemyId === 'boiler' && this.enemyTurnCount % 3 === 0) {
+      damage += 3;
+      result.burst = true;
+    }
     const weakRoll = this.lastRoll !== null && this.lastRoll <= 2;
     const willInhale =
       this.enemyId === 'vacuum' && weakRoll && !hadShield && this.playerHp > 0 && !this.outcome;
@@ -424,11 +568,24 @@ export class CombatModel {
     return { ok: true };
   }
 
+  stealRandomItem() {
+    const pool = ['heal', 'honey', 'tonic', 'double', 'charm'].filter((id) => (this.inventory[id] || 0) > 0);
+    if (!pool.length) return null;
+    const pick = pool[Math.floor(this.rng.next() * pool.length)] || pool[0];
+    this.inventory[pick] -= 1;
+    this.stolenItems += 1;
+    const names = { heal: 'Семечко-лечение', honey: 'Медовая капля', tonic: 'Настойка из коры', double: 'Двойное зерно', charm: 'Талисман из перьев' };
+    return names[pick] || pick;
+  }
+
   canSpare() {
     if (this.enemyHp <= 0 || this.playerHp <= 0) return false;
     if (this.enemyHp > this.def.spareThreshold) return false;
     if (this.enemyId === 'vacuum') {
       return this.allies.cat || this.seeds >= 1;
+    }
+    if (this.enemyId === 'shunya') {
+      return this.kindness >= 3 || this.allies.shadow || this.allies.moth;
     }
     return true;
   }

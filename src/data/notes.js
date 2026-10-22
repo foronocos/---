@@ -1,4 +1,6 @@
-export const NOTES = {
+import { NOTES_ACT2 } from './notesB.js';
+
+const NOTES_ACT1 = {
   n_cage: {
     id: 'n_cage',
     title: 'Табличка на клетке',
@@ -79,6 +81,8 @@ export const NOTES = {
   },
 };
 
+export const NOTES = { ...NOTES_ACT1, ...NOTES_ACT2 };
+
 export const NOTE_ORDER = Object.keys(NOTES);
 
 export function getNote(noteId) {
@@ -88,3 +92,4 @@ export function getNote(noteId) {
 export function notesCount() {
   return NOTE_ORDER.length;
 }
+

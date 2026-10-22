@@ -379,9 +379,50 @@ console.log('✓ меню → класс → глава → вступление
   seconds(run, 0.6);
   assert.ok(run.topOverlay() instanceof DialogueScene, 'на балконе запускается финал');
   finishDialogue(run);
-  seconds(run, 0.7);
+  seconds(run, 3.2);
+  if (run.topOverlay() instanceof DialogueScene) finishDialogue(run);
+  seconds(run, 3.2);
+  assert.equal(run.state.roomId, 'stairs', 'после балкона история ведёт в подъезд');
+  assert.equal(run.state.chapter, 5, 'подъезд открывает пятую главу');
+  assert.ok(Boolean(run.state.player.keyItems.shard), 'у Чики остаётся осколок пера');
+
+  // ------------------------------------------------ шесть глав второго акта
+  const act2 = ['keys', 'boiler', 'moth', 'raven', 'shadow', 'shunya'];
+  for (const boss of act2) run.state.player.bosses[boss] = 'spare';
+  run.state.player.allies = {
+    cat: true,
+    pigeon: true,
+    vacuum: true,
+    pasta: true,
+    keys: true,
+    boiler: true,
+    moth: true,
+    raven: true,
+    shadow: true,
+    shunya: true,
+  };
+  run.state.player.kindness = 6;
+  run.state.player.keyItems.feather = true;
+
+  for (const roomId of ['basement', 'boiler', 'attic', 'trunks', 'roof', 'antennas', 'eclipse', 'mirrorRoof', 'nest']) {
+    run.enterRoom(roomId, 200);
+    seconds(run, 0.35);
+    press(run, 'Enter');
+    seconds(run, 0.3);
+    if (run.topOverlay() instanceof DialogueScene) finishDialogue(run);
+    seconds(run, 0.2);
+  }
+  assert.equal(run.state.chapter, 10, 'гнездо — десятая глава');
+
+  run.enterRoom('skyDawn', 220);
+  seconds(run, 0.5);
+  press(run, 'Enter');
+  seconds(run, 0.5);
+  assert.ok(run.topOverlay() instanceof DialogueScene, 'в небе запускается финальный выбор');
+  finishDialogue(run);
+  seconds(run, 0.8);
   assert.ok(run.scene instanceof EndingScene, 'финал приводит к концовке');
-  assert.equal(run.endingId, 'flock', 'решения игрока дают концовку «Квартира-Стая»');
+  assert.equal(run.endingId, 'dawn', 'мир с Шуней и союзники дают «Первый Рассвет»');
   assert.ok(!run.hasSave(), 'после концовки сохранение удаляется');
   console.log('✓ главы, финал и концовка по накопленным решениям');
 }

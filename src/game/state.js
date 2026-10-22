@@ -30,12 +30,12 @@ export function createPlayer(classId) {
     maxHp: cls.hp,
     seeds: 0,
     items: { heal: 1, honey: 0, double: 0 },
-    keyItems: { key: false, feather: false },
+    keyItems: { key: false, feather: false, shard: false },
     hasEye: false,
     ultOwned: false,
     ultUsed: false,
     upgrades: {},
-    allies: { cat: false, pigeon: false, vacuum: false },
+    allies: { cat: false, pigeon: false, vacuum: false, keys: false, boiler: false, moth: false, raven: false, shadow: false, shunya: false },
     flags: {},
     kindness: 0,
     greed: 0,
@@ -73,8 +73,19 @@ export function reconcileState(state) {
   state.player.classId = cls.id;
   state.player.upgrades = state.player.upgrades || {};
   state.player.flags = state.player.flags || {};
-  state.player.allies = { cat: false, pigeon: false, vacuum: false, ...(state.player.allies || {}) };
-  state.player.keyItems = { key: false, feather: false, ...(state.player.keyItems || {}) };
+  state.player.allies = {
+    cat: false,
+    pigeon: false,
+    vacuum: false,
+    keys: false,
+    boiler: false,
+    moth: false,
+    raven: false,
+    shadow: false,
+    shunya: false,
+    ...(state.player.allies || {}),
+  };
+  state.player.keyItems = { key: false, feather: false, shard: false, ...(state.player.keyItems || {}) };
   state.player.items = { heal: 0, honey: 0, double: 0, ...(state.player.items || {}) };
   state.player.notesRead = state.player.notesRead || [];
   state.player.bestiarySeen = state.player.bestiarySeen || [];
@@ -96,7 +107,8 @@ export function reconcileState(state) {
   state.player.seeds = Math.max(0, Math.floor(state.player.seeds || 0));
   state.player.kindness = Math.max(0, state.player.kindness || 0);
   state.player.greed = Math.max(0, state.player.greed || 0);
-  state.chapter = Math.min(4, Math.max(1, state.chapter || 1));
+  state.chapter = Math.min(10, Math.max(1, state.chapter || 1));
+  state.version = Math.max(2, state.version || 1);
   return state;
 }
 
@@ -251,4 +263,6 @@ export const SHOP_ITEM_KEYS = {
   'item:honey': { kind: 'item', itemId: 'honey' },
   'item:double': { kind: 'item', itemId: 'double' },
   'item:eye': { kind: 'item', itemId: 'eye' },
+  'item:tonic': { kind: 'item', itemId: 'tonic' },
+  'item:charm': { kind: 'item', itemId: 'charm' },
 };
